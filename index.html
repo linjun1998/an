@@ -4,15 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="format-detection" content="telephone=no">
     <title>安心长辈助手</title>
     <style>
-        /* --- 1. 全局变量与重置 --- */
+        /* --- 1. 全局变量 --- */
         :root {
-            --primary: #409EFF;
-            --danger: #F56C6C;
-            --success: #67C23A;
-            --warning: #E6A23C;
             --bg: #FFFFFF;
             --card-bg: #F2F4F8;
             --text: #000000;
@@ -21,9 +16,15 @@
             --shadow: 0 4px 12px rgba(0,0,0,0.08);
             --radius: 20px;
             --safe-bottom: env(safe-area-inset-bottom);
-            --header-height: 70px;
-            --nav-height: 80px;
-            --scale: 1; /* 字体缩放系数 */
+            --scale: 1;
+            
+            /* 默认色值 */
+            --c-blue: #409EFF;
+            --c-green: #67C23A;
+            --c-orange: #E6A23C;
+            --c-red: #F56C6C;
+            --c-purple: #8c5ae8;
+            --c-dark: #303133;
         }
 
         [data-theme="dark"] {
@@ -39,29 +40,30 @@
         
         body {
             font-family: "PingFang SC", "WeChat Sans", sans-serif;
-            background-color: #f0f2f5; 
+            background-color: #000; /* 只有背景黑，APP容器在里面 */
             color: var(--text);
-            height: 100vh;
+            height: 100%;
             overflow: hidden;
+            /* 允许输入框点击，阻止全页面选择 */
+            -webkit-touch-callout: none; 
+            -webkit-user-select: none;
             user-select: none;
-            display: flex;
-            justify-content: center;
         }
 
-        /* --- 2. APP 容器 --- */
+        /* --- 2. APP 容器 (使用 Fixed 解决 WebView 高度塌陷) --- */
         #app {
-            width: 100%;
-            max-width: 480px; /* 限制最大宽度，适应平板/桌面 */
-            height: 100%;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
             background-color: var(--bg);
             display: flex;
             flex-direction: column;
-            position: relative;
-            box-shadow: 0 0 30px rgba(0,0,0,0.1);
-            overflow: hidden;
+            z-index: 1;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            max-width: 600px; /* 桌面限制宽度，手机全屏 */
+            margin: 0 auto;
         }
 
-        /* --- 3. 页面切换动画体系 --- */
+        /* --- 3. 页面切换体系 --- */
         .view-container {
             flex: 1;
             position: relative;
@@ -72,43 +74,31 @@
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             overflow-y: auto;
-            padding: 20px 20px calc(var(--nav-height) + 40px) 20px;
-            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            transform: translateX(100%); /* 默认在右侧隐藏 */
+            padding: 20px 20px calc(85px + var(--safe-bottom)) 20px; /* 留出底部导航高度 */
+            transition: transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.25s;
+            transform: translateX(100%);
             opacity: 0;
             background-color: var(--bg);
             z-index: 1;
         }
 
-        .page.active {
-            transform: translateX(0);
-            opacity: 1;
-            z-index: 10;
-        }
-
-        .page.pre {
-            transform: translateX(-30%);
-            opacity: 0.5;
-            z-index: 5;
-        }
+        .page.active { transform: translateX(0); opacity: 1; z-index: 10; }
+        .page.pre { transform: translateX(-30%); opacity: 0.5; z-index: 5; }
 
         /* --- 4. 组件样式 --- */
-        
-        /* 标题栏 */
         header {
-            height: var(--header-height);
+            height: 60px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: calc(28px * var(--scale));
+            font-size: calc(24px * var(--scale));
             font-weight: 800;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
             flex-shrink: 0;
             background: var(--bg);
             z-index: 20;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
         }
 
-        /* 按钮 */
         .btn {
             border: none;
             display: flex;
@@ -118,35 +108,41 @@
             border-radius: var(--radius);
             font-weight: bold;
             cursor: pointer;
-            transition: transform 0.1s, filter 0.1s;
+            transition: transform 0.1s;
             box-shadow: var(--shadow);
+            color: white;
         }
-        .btn:active { transform: scale(0.96); filter: brightness(0.9); }
+        .btn:active { transform: scale(0.96); }
 
-        /* 主页网格 */
+        /* 输入框样式修复 (强制允许选中文本) */
+        input { -webkit-user-select: text !important; user-select: text !important; }
+
         .home-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            grid-template-rows: repeat(3, 1fr);
-            gap: 20px;
+            grid-auto-rows: 1fr;
+            gap: 15px;
             height: 100%;
             padding-bottom: 20px;
         }
 
-        .big-btn {
-            font-size: calc(22px * var(--scale));
-            color: white;
+        .app-btn {
             padding: 15px;
+            font-size: calc(20px * var(--scale));
+            /* 颜色由JS动态设置 */
         }
-        .big-btn svg { width: 50px; height: 50px; margin-bottom: 10px; fill: white; }
+        .app-btn svg { width: 45px; height: 45px; margin-bottom: 10px; fill: white; }
+        .app-btn .emoji-icon { font-size: 45px; margin-bottom: 10px; }
 
         /* 底部导航 */
         nav {
-            height: calc(var(--nav-height) + var(--safe-bottom));
+            position: absolute; bottom: 0; width: 100%;
+            height: calc(60px + var(--safe-bottom));
             background: var(--bg);
             border-top: 1px solid var(--border);
             display: flex;
             justify-content: space-around;
+            padding: 5px 0 0 0;
             padding-bottom: var(--safe-bottom);
             z-index: 20;
         }
@@ -157,56 +153,39 @@
             align-items: center;
             justify-content: center;
             color: var(--sub-text);
-            font-size: calc(16px * var(--scale));
-            transition: color 0.2s;
+            font-size: calc(14px * var(--scale));
         }
-        .nav-item.active { color: var(--primary); }
-        .nav-icon { width: 32px; height: 32px; margin-bottom: 4px; fill: currentColor; }
+        .nav-item.active { color: var(--c-blue); }
+        .nav-icon { width: 28px; height: 28px; margin-bottom: 4px; fill: currentColor; }
 
-        /* 列表项 (联系人/设置) */
         .list-item {
             background: var(--card-bg);
-            padding: 25px;
+            padding: 20px;
             border-radius: var(--radius);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: calc(24px * var(--scale));
+            font-size: calc(22px * var(--scale));
             margin-bottom: 15px;
             color: var(--text);
         }
-        .list-item:active { background: #e0e0e0; }
+        .list-item:active { background: #d0d0d0; }
 
-        /* 表单输入框 */
-        .form-group { margin-bottom: 20px; }
-        .input-box {
-            width: 100%;
-            padding: 20px;
-            font-size: calc(24px * var(--scale));
-            border: 2px solid var(--border);
-            border-radius: var(--radius);
-            background: var(--card-bg);
-            color: var(--text);
-        }
-        .input-box:focus { border-color: var(--primary); }
-
-        /* 特殊功能控件 */
         .toggle-switch {
-            width: 60px; height: 34px;
-            background: #ccc; border-radius: 34px;
+            width: 50px; height: 28px;
+            background: #ccc; border-radius: 28px;
             position: relative;
-            transition: 0.3s;
         }
+        .toggle-switch.on { background: var(--c-blue); }
         .toggle-switch::after {
             content: ''; position: absolute;
-            width: 26px; height: 26px; left: 4px; bottom: 4px;
+            width: 22px; height: 22px; left: 3px; top: 3px;
             background: white; border-radius: 50%;
             transition: 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
-        .toggle-switch.on { background: var(--primary); }
-        .toggle-switch.on::after { transform: translateX(26px); }
+        .toggle-switch.on::after { transform: translateX(22px); }
 
-        /* 模态框系统 */
+        /* 模态框 */
         .modal-mask {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.6);
@@ -217,92 +196,83 @@
         }
         .modal {
             background: var(--bg);
-            width: 85%; max-width: 360px;
-            border-radius: 24px;
-            padding: 30px;
+            width: 85%;
+            max-width: 360px;
+            border-radius: 20px;
+            padding: 25px;
             text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            animation: popIn 0.3s;
         }
         @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-        /* Toast 提示 */
+        /* Toast */
         #toast {
-            position: fixed; bottom: 120px; left: 50%;
-            transform: translateX(-50%) translateY(20px);
+            position: fixed; bottom: 100px; left: 50%;
+            transform: translateX(-50%);
             background: rgba(0,0,0,0.85);
             color: white;
-            padding: 15px 30px;
-            border-radius: 50px;
-            font-size: calc(20px * var(--scale));
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: calc(18px * var(--scale));
             opacity: 0;
             transition: 0.3s;
-            z-index: 200;
             pointer-events: none;
+            z-index: 200;
             white-space: nowrap;
         }
-        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        #toast.show { opacity: 1; bottom: 110px; }
 
-        /* SOS 动画 */
         .sos-pulse { animation: pulse-red 1.5s infinite; }
         @keyframes pulse-red {
             0% { box-shadow: 0 0 0 0 rgba(245, 108, 108, 0.7); }
             70% { box-shadow: 0 0 0 20px rgba(245, 108, 108, 0); }
             100% { box-shadow: 0 0 0 0 rgba(245, 108, 108, 0); }
         }
-
-        /* 模拟APP全屏层 */
-        #external-app-layer {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #fff; z-index: 150;
-            display: none; flex-direction: column;
-        }
         
-        /* 工具类 */
         .hidden { display: none !important; }
-        .color-blue { background: var(--primary); }
-        .color-green { background: var(--success); }
-        .color-orange { background: var(--warning); }
-        .color-red { background: var(--danger); }
-        .color-purple { background: #8c5ae8; }
+        
+        /* 添加联系人表单 */
+        .input-box {
+            width: 100%;
+            padding: 15px;
+            font-size: calc(22px * var(--scale));
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            background: var(--bg);
+            color: var(--text);
+            margin-bottom: 20px;
+        }
+        .input-box:focus { border-color: var(--c-blue); }
     </style>
 </head>
 <body>
 
     <div id="app">
-        <!-- 头部 -->
         <header id="header-text">安心长辈助手</header>
 
-        <!-- 视图容器 -->
         <div class="view-container">
-            
-            <!-- 1. 主页 (动态渲染) -->
+            <!-- 1. 主页 -->
             <div id="view-home" class="page active">
-                <div class="home-grid" id="home-grid-container">
-                    <!-- JS 将在此处注入按钮 -->
-                </div>
+                <div class="home-grid" id="home-grid-container"></div>
             </div>
 
-            <!-- 2. 通讯录 (CRUD) -->
+            <!-- 2. 通讯录 -->
             <div id="view-contacts" class="page">
-                <div style="display:flex; justify-content:space-between; margin-bottom:20px; align-items:center;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                     <h2 style="font-size:calc(32px * var(--scale))">常用联系人</h2>
-                    <button class="btn" style="width:60px; height:60px; background:var(--success); color:white; font-size:30px;" onclick="openAddContact()">+</button>
+                    <button class="btn" style="width:60px; height:60px; background:var(--c-green); font-size:30px;" onclick="openAddContact()">+</button>
                 </div>
-                <div id="contact-list-container">
-                    <!-- JS 渲染列表 -->
-                </div>
+                <div id="contact-list-container"></div>
             </div>
 
-            <!-- 3. 设置与添加APP -->
+            <!-- 3. 设置 -->
             <div id="view-settings" class="page">
-                <h2 style="font-size:calc(32px * var(--scale)); margin-bottom:20px;">功能设置</h2>
-                
-                <div class="list-item" onclick="openAppMarket()" style="color:var(--primary); justify-content:center; border:2px dashed var(--primary);">
-                    ➕ 点击添加或删除主页功能
+                <h2 style="font-size:calc(32px * var(--scale)); margin-bottom:20px;">设置</h2>
+                <div class="list-item" onclick="openAppMarket()" style="color:var(--c-blue); justify-content:center;">
+                    ➕ 添加/删除主页功能
                 </div>
-
-                <div class="list-item">
+                <div class="list-item" onclick="toggleFontSize()">
                     <span>字体大小 (点击切换)</span>
                     <div id="font-indicator" style="font-size:18px; color:#999">标准</div>
                 </div>
@@ -310,493 +280,314 @@
                     <span>深色护眼模式</span>
                     <div class="toggle-switch" id="theme-toggle"></div>
                 </div>
-                <div class="list-item" onclick="handleAction('scan')">
-                    <span>使用教程</span>
-                    <span style="color:#999">查看 ></span>
+                <div class="list-item" onclick="resetApp()">
+                    <span style="color:var(--c-red)">重置所有数据</span>
                 </div>
             </div>
 
-            <!-- 4. 添加联系人表单 (子页面) -->
+            <!-- 4. 添加联系人 -->
             <div id="view-add-contact" class="page">
                 <h2>新增联系人</h2>
-                <div class="form-group" style="margin-top:40px;">
-                    <label style="font-size:20px; margin-bottom:10px; display:block;">名称 (例如：大儿子)</label>
-                    <input type="text" id="new-contact-name" class="input-box" placeholder="输入称呼">
-                </div>
-                <div class="form-group">
-                    <label style="font-size:20px; margin-bottom:10px; display:block;">电话号码</label>
-                    <input type="tel" id="new-contact-phone" class="input-box" placeholder="输入11位号码">
-                </div>
-                <button class="btn color-blue" style="width:100%; height:70px; color:white; font-size:28px; margin-top:40px;" onclick="saveContact()">保存联系人</button>
-                <button class="btn" style="width:100%; height:60px; background:#ccc; font-size:24px; margin-top:20px;" onclick="router.back()">取消</button>
+                <input type="text" id="new-contact-name" class="input-box" placeholder="输入称呼 (如: 大儿子)">
+                <input type="tel" id="new-contact-phone" class="input-box" placeholder="输入电话号码">
+                <button class="btn" style="width:100%; height:60px; background:var(--c-blue); font-size:28px;" onclick="saveContact()">保存</button>
+                <button class="btn" style="width:100%; height:50px; background:#ccc; margin-top:15px; font-size:24px;" onclick="router.back()">取消</button>
             </div>
         </div>
 
-        <!-- 底部导航 -->
         <nav>
             <div class="nav-item active" onclick="router.go('home')">
                 <svg class="nav-icon" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
                 主页
             </div>
             <div class="nav-item" onclick="router.go('contacts')">
-                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 0H4v2h16V0zM4 24h16v-2H4v2zM20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 2.75c1.24 0 2.25 1.01 2.25 2.25s-1.01 2.25-2.25 2.25S9.75 10 9.75 8.75 10.76 6.75 12 6.75zM17 17H7v-1.5c0-1.67 3.33-2.5 5-2.5s5 .83 5 2.5V17z"/></svg>
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 0H4v2h16V0zM4 24h16v-2H4v2zM20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 3.75c1.24 0 2.25 1.01 2.25 2.25s-1.01 2.25-2.25 2.25S9.75 9 9.75 7.75 10.76 5.75 12 5.75z"/></svg>
                 通讯录
             </div>
             <div class="nav-item" onclick="router.go('settings')">
-                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58z"/></svg>
                 设置
             </div>
         </nav>
     </div>
 
-    <!-- 全局组件：Toast -->
-    <div id="toast">提示信息</div>
-
-    <!-- 全局组件：外部APP模拟层 -->
-    <div id="external-app-layer">
-        <header style="border-bottom:1px solid #eee;">
-            <button onclick="closeExternalApp()" style="background:none; border:none; font-size:24px; color:var(--primary);">← 退出</button>
-            <span id="ext-app-title" style="flex:1; text-align:center; font-weight:bold;">APP名称</span>
-            <span style="width:40px;"></span>
-        </header>
-        <div style="flex:1; display:flex; align-items:center; justify-content:center; flex-direction:column; color:#888;">
-            <div style="font-size:40px; margin-bottom:20px;">⚡</div>
-            <p style="font-size:24px;">正在打开功能...</p>
-            <p style="margin-top:20px; font-size:16px; color:#aaa;">(演示模式：此为模拟界面)</p>
-            <div id="ext-app-controls" style="margin-top:40px; display:flex; gap:20px;"></div>
-        </div>
-    </div>
-
-    <!-- 模态框：应用市场 -->
+    <div id="toast">提示</div>
     <div id="modal-market" class="modal-mask">
         <div class="modal">
-            <h3 style="font-size:28px; margin-bottom:20px;">添加/删除功能</h3>
-            <div id="market-list" style="max-height:60vh; overflow-y:auto; text-align:left;"></div>
-            <button class="btn color-blue" style="width:100%; height:60px; color:white; font-size:24px; margin-top:20px;" onclick="closeModal('modal-market')">返回</button>
+            <h3 style="font-size:24px; margin-bottom:15px;">功能管理</h3>
+            <div id="market-list" style="max-height:50vh; overflow-y:auto; text-align:left;"></div>
+            <button class="btn" style="width:100%; height:50px; background:var(--c-blue); color:white; font-size:20px; margin-top:20px;" onclick="closeModal('modal-market')">返回</button>
         </div>
     </div>
-
-    <!-- 模态框：SOS确认 -->
     <div id="modal-sos" class="modal-mask">
         <div class="modal">
-            <div style="color:var(--danger); font-size:60px; margin-bottom:10px;">🆘</div>
-            <h3 style="font-size:32px; color:var(--danger); margin-bottom:10px;">SOS 紧急求助</h3>
-            <p style="font-size:20px; color:#666; margin-bottom:30px;">即将拨打紧急联系人 110</p>
-            <button class="btn color-red" style="width:100%; height:70px; color:white; font-size:28px;" onclick="confirmSOS()">立即拨打</button>
-            <button class="btn" style="width:100%; height:60px; background:#ccc; font-size:24px; margin-top:15px;" onclick="closeModal('modal-sos')">取消</button>
+            <div style="color:var(--c-red); font-size:60px;">🆘</div>
+            <h3 style="font-size:28px; color:var(--c-red); margin:10px 0;">紧急求助</h3>
+            <p style="font-size:18px; color:#666;">即将拨打 110 和紧急联系人</p>
+            <button class="btn" style="width:100%; height:60px; background:var(--c-red); color:white; font-size:24px; margin-top:20px;" onclick="confirmSOS()">确认拨打</button>
+            <button class="btn" style="width:100%; height:50px; background:#ccc; font-size:20px; margin-top:15px;" onclick="closeModal('modal-sos')">取消</button>
         </div>
     </div>
 
     <script>
-        /**
-         * 1. 数据存储
-         * 使用 LocalStorage 模拟数据库，实现数据持久化
-         */
-        const PRESET_APPS = [
-            { id: 'call', name: '给子女打电话', icon: 'M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z', color: 'var(--primary)', fixed: false, type: 'link' },
-            { id: 'video', name: '视频通话', icon: 'M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z', color: 'var(--primary)', fixed: false, type: 'link' },
-            { id: 'light', name: '手电筒', icon: 'M6 14l3 3v5h6v-5l3-3V9H6v5zm2-3h8v2.17l-3 3V20h-2v-3.83l-3-3V11zm3-9h2v3h-2z', color: 'var(--warning)', fixed: false, type: 'action' },
-            { id: 'volume', name: '音量加大', icon: 'M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z', color: 'var(--success)', fixed: false, type: 'action' },
-            { id: 'scan', name: '微信扫一扫', icon: 'M7 7h10v10H7z', color: 'var(--success)', fixed: false, type: 'link' },
-            { id: 'sos', name: 'SOS紧急求助', icon: 'M12 2L1 21h22L12 2zm0 3.99L19.53 19H4.47L12 5.99zM11 16h2v2h-2zm0-6h2v4h-2z', color: 'var(--danger)', fixed: true, type: 'action' },
-        ];
-
-        const STORE = {
-            userApps: JSON.parse(localStorage.getItem('ax_userHomeApps')) || PRESET_APPS.filter(a => a.id !== 'sos').map(a => a.id), // 默认主页不含SOS
-            contacts: JSON.parse(localStorage.getItem('ax_contacts')) || [
-                { id: '1', name: '大儿子', phone: '13800138000' },
-                { id: '2', name: '小女儿', phone: '13900139000' },
-                { id: '3', name: '家庭医生', phone: '120' }
-            ],
-            settings: JSON.parse(localStorage.getItem('ax_settings')) || {
-                theme: 'light',
-                fontSize: 1 // 1 = 标准, 1.2 = 大, 1.4 = 特大
-            }
+        // 统一的 APP 注册表 (修复的核心：合并预设和第三方数据)
+        const APP_REGISTRY = {
+            'call': { name: '拨打电话', type: 'svg', path: 'M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z', color: '#409EFF' },
+            'video': { name: '视频通话', type: 'svg', path: 'M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z', color: '#409EFF' },
+            'light': { name: '手电筒', type: 'svg', path: 'M6 14l3 3v5h6v-5l3-3V9H6v5zm2-3h8v2.17l-3 3V20h-2v-3.83l-3-3V11zm3-9h2v3h-2z', color: '#E6A23C' },
+            'volume': { name: '调大音量', type: 'svg', path: 'M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z', color: '#67C23A' },
+            'scan': { name: '扫一扫', type: 'svg', path: 'M7 7h10v10H7z', color: '#67C23A', isSOS: false },
+            'sos': { name: 'SOS求助', type: 'svg', path: 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z', color: '#F56C6C', isSOS: true },
+            // 第三方 App (使用 emoji 或 颜色)
+            'weixin_pay': { name: '支付宝支付', type: 'emoji', content: '💳', color: '#1677ff' },
+            'toutiao': { name: '今日头条', type: 'emoji', content: '📰', color: '#f85959' },
+            'music': { name: '收音机', type: 'emoji', content: '📻', color: '#8c5ae8' },
+            'photos': { name: '手机相册', type: 'emoji', content: '🖼️', color: '#ff9900' },
+            'map': { name: '高德地图', type: 'emoji', content: '🗺️', color: '#409EFF' }
         };
 
-        // 模拟的应用商店数据
-        const APP_MARKET_DATA = [
-            { id: 'weixin_pay', name: '支付宝付款', appIcon: '💳', color: '#1677ff' },
-            { id: 'toutiao', name: '今日头条', appIcon: '📰', color: '#f85959' },
-            { id: 'music', name: '收音机', appIcon: '📻', color: '#8c5ae8' },
-            { id: 'photos', name: '相册', appIcon: '🖼️', color: '#ff9900' },
-            { id: 'calendar', name: '日历', appIcon: '📅', color: '#409EFF' }
-        ];
-
-        /**
-         * 2. 路由与页面管理
-         */
-        const router = {
-            current: 'home',
-            go: function(pageId) {
-                // 导航栏高亮
-                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-                if (['home', 'contacts', 'settings'].includes(pageId)) {
-                    document.querySelectorAll('.nav-item')[['home', 'contacts', 'settings'].indexOf(pageId)].classList.add('active');
+        // 数据存储与初始化
+        const STORE = {
+            get: (key, def) => {
+                try {
+                    const val = localStorage.getItem(key);
+                    return val ? JSON.parse(val) : def;
+                } catch(e) {
+                    console.error("Storage error", e);
+                    return def;
                 }
+            },
+            set: (key, val) => localStorage.setItem(key, JSON.stringify(val)),
+            homeApps: localStorage.getItem('ax_homeApps') ? JSON.parse(localStorage.getItem('ax_homeApps')) : ['call', 'video', 'light', 'volume', 'scan'],
+            contacts: localStorage.getItem('ax_contacts') ? JSON.parse(localStorage.getItem('ax_contacts')) : [
+                { id: '1', name: '大儿子', phone: '13800138000' },
+                { id: '2', name: '家庭医生', phone: '120' }
+            ],
+            theme: localStorage.getItem('ax_theme') || 'light',
+            fontSize: parseFloat(localStorage.getItem('ax_fontSize')) || 1
+        };
 
-                // 页面切换动画 (简单的 slide 效果)
-                const pages = document.querySelectorAll('.page');
-                const targetPage = document.getElementById('view-' + pageId);
+        // 路由
+        const router = {
+            go: (pageId) => {
+                const navs = document.querySelectorAll('.nav-item');
+                navs.forEach(n => n.classList.remove('active'));
                 
-                // 隐藏所有
+                const index = ['home', 'contacts', 'settings'].indexOf(pageId);
+                if(index >= 0) navs[index].classList.add('active');
+
+                const pages = document.querySelectorAll('.page');
+                const target = document.getElementById('view-' + pageId);
+
                 pages.forEach(p => {
-                    if (p.classList.contains('active')) {
+                    if(p.classList.contains('active')) {
                         p.classList.remove('active');
-                        p.classList.add('pre'); // 当前页向左移
+                        p.classList.add('pre');
                     } else {
-                        p.classList.remove('active');
-                        p.classList.remove('pre');
+                        p.classList.remove('active', 'pre');
                     }
                 });
 
-                // 显示目标
-                targetPage.classList.add('active');
+                target.classList.add('active');
+                setTimeout(() => pages.forEach(p => p.classList.remove('pre')), 280);
 
-                // 延时清理 pre 类
-                setTimeout(() => {
-                    pages.forEach(p => p.classList.remove('pre'));
-                }, 300);
-
-                // 重新渲染特定页面内容
-                if (pageId === 'home') renderHome();
-                if (pageId === 'contacts') renderContacts();
+                if(pageId === 'home') renderHome();
+                if(pageId === 'contacts') renderContacts();
             },
-            back: function() {
-                this.go('settings'); // 简单处理：返回设置页
-            }
+            back: () => router.go('settings')
         };
 
-        /**
-         * 3. 渲染引擎 {
+        // 渲染主页 (修复版)
+        function renderHome() {
             const container = document.getElementById('home-grid-container');
             container.innerHTML = '';
 
-            // 必须包含的SOS按钮 (如果不在列表里强制添加)
-            let gridItems = STORE.userApps.map(id => PRESET_APPS.find(a => a.id === id) || PRESET_APPS[0]).filter(i => i);
-            
-            // 检查是否有SOS
-            const hasSOS = gridItems.some(i => i.id === 'sos');
-            if (!hasSOS) gridItems.push(PRESET_APPS.find(i => i.id === 'sos'));
+            // 如果没有SOS，强制添加
+            const apps = [...STORE.homeApps];
+            if (!apps.includes('sos')) apps.push('sos');
 
-            gridItems.forEach(item => {
+            apps.forEach(id => {
+                const app = APP_REGISTRY[id];
+                if (!app) return; // 跳过无效ID
+
                 const btn = document.createElement('div');
-                btn.className = `btn big-btn`;
-                
-                // 动态类名，用于颜色
-                if (item.color.includes('blue')) btn.classList.add('color-blue');
-                else if (item.color.includes('green')) btn.classList.add('color-green');
-                else if (item.color.includes('orange')) btn.classList.add('color-orange');
-                else if (item.color.includes('red')) {
-                    btn.classList.add('color-red');
-                    btn.classList.add('sos-pulse'); // SOS 呼吸动画
-                } else if (item.color.includes('purple')) btn.classList.add('color-purple');
+                btn.className = 'btn app-btn';
+                btn.style.backgroundColor = app.color;
+                if (app.isSOS) btn.classList.add('sos-pulse');
 
-                // 自定义App样式
-                if (APP_MARKET_DATA.find(d => d.id === item.id)) {
-                    const app = APP_MARKET_DATA.find(d => d.id === item.id);
-                    btn.style.backgroundColor = app.color;
-                    btn.innerHTML = `<div style="font-size:50px; margin-bottom:10px;">${app.appIcon}</div>${item.name}`;
+                if (app.type === 'svg') {
+                    btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="${app.path}"/></svg>${app.name}`;
                 } else {
-                    // 预设App SVG图标
-                    btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="${item.icon}"/></svg>${item.name}`;
+                    btn.innerHTML = `<div class="emoji-icon">${app.content}</div>${app.name}`;
                 }
 
-                // 点击事件绑定
-                btn.onclick = () => handleAction(item.id, item.name);
-                
-                // 长按逻辑 (仅对SOS有效，增强防误触)
-                if (item.id === 'sos') {
+                // 事件绑定
+                if (app.isSOS) {
                     addLongPress(btn, () => openModal('modal-sos'));
-                    // 如果只是普通点击，提示长按
-                    btn.onmousedown = (e) => { /* 防止短按触发 */ }; 
-                    btn.ontouchstart = (e) => { /* 防止短按触发 */ };
+                } else {
+                    btn.onclick = () => handleAppAction(id, app.name);
                 }
 
                 container.appendChild(btn);
             });
         }
 
+        // 渲染通讯录
         function renderContacts() {
             const list = document.getElementById('contact-list-container');
             list.innerHTML = '';
-            STORE.contacts.forEach(contact => {
+            STORE.contacts.forEach(c => {
                 const item = document.createElement('div');
                 item.className = 'list-item';
                 item.innerHTML = `
-                    <span>${contact.name}</span>
-                    <div style="display:flex; gap:15px; align-items:center;">
-                        <span style="color:#999; font-size:20px;">${contact.phone}</span>
-                        <button class="btn" style="width:50px; height:50px; background:var(--danger); color:white; font-size:20px; border-radius:50%;" onclick="deleteContact('${contact.id}')">✕</button>
+                    <span>${c.name}</span>
+                    <div style="display:flex; align-items:center;">
+                        <span style="color:#999; margin-right:10px; font-size:18px;">${c.phone}</span>
+                        <button class="btn" style="width:40px; height:40px; background:var(--c-red); font-size:20px; border-radius:50%; padding:0;" onclick="deleteContact('${c.id}')">✕</button>
                     </div>
                 `;
                 item.onclick = (e) => {
-                    if (e.target.tagName !== 'BUTTON') handleAction('call_person', contact.name, contact.phone);
+                    if (e.target.tagName !== 'BUTTON') showToast(`正在呼叫 ${c.name}...`);
                 };
                 list.appendChild(item);
             });
         }
 
-        /**
-         * 4. 功能逻辑
-         */
-        function handleAction(type, name, phone) {
-            vibrate(50); // 触觉反馈
-            
-            switch (type) {
-                case 'call':
-                    if (navigator.onLine) {
-                        showToast('正在呼叫子女...');
-                        // 在真机环境中，这里可以使用 window.location.href = 'tel:...'
-                    } else {
-                        showToast('无网络连接');
-                    }
-                    break;
-                case 'call_person':
-                    showToast(`正在呼叫 ${name} (${phone})`);
-                    break;
-                case 'light':
-                    showToast('手电筒已打开');
-                    // 实际开发中可以调用 Torch API
-                    break;
-                case 'volume':
-                    showToast('音量已调至最大');
-                    break;
-                case 'scan':
-                    showToast('启动扫一扫...');
-                    break;
-                case 'sos':
-                    // SOS 应该由长按触发，这里仅作兜底
-                    openModal('modal-sos');
-                    break;
-                default:
-                    // 处理从市场添加的APP
-                    openExternalApp(name);
-                    break;
-            }
+        // 交互逻辑
+        function handleAppAction(id, name) {
+            showToast(`正在打开: ${name}`);
+            // 真实环境可在这里进行跳转
         }
 
         function confirmSOS() {
             closeModal('modal-sos');
-            showToast('正在拨打紧急报警电话...');
-            // 模拟逻辑：发送短信 + 拨打电话
+            showToast('已触发紧急求助！');
         }
 
-        // 通讯录 CRUD
-        function openAddContact() {
-            router.go('add-contact');
-        }
-
-        function saveContact() {
-            const name = document.getElementById('new-contact-name').value;
-            const phone = document.getElementById('new-contact-phone').value;
-            
-            if (!name || !phone) {
-                showToast('请填写完整信息');
-                return;
-            }
-            
-            STORE.contacts.push({ id: Date.now().toString(), name, phone });
-            localStorage.setItem('ax_contacts', JSON.stringify(STORE.contacts)); // 保存
-            
-            // 清空表单
-            document.getElementById('new-contact-name').value = '';
-            document.getElementById('new-contact-phone').value = '';
-            
-            showToast('联系人已保存');
-            router.go('contacts');
-        }
-
-        function deleteContact(id) {
-            if(confirm('确定要删除这个联系人吗？')) {
-                STORE.contacts = STORE.contacts.filter(c => c.id !== id);
-                localStorage.setItem('ax_contacts', JSON.stringify(STORE.contacts));
-                renderContacts();
-                showToast('已删除');
-            }
-        }
-
-        // 应用市场逻辑
+        // 市场逻辑
         function openAppMarket() {
             const list = document.getElementById('market-list');
             list.innerHTML = '';
             
-            // 1. 显示预设功能开关
-            PRESET_APPS.forEach(app => {
-                if (app.id === 'sos') return; // SOS 不可删除
-                const isActive = STORE.userApps.includes(app.id);
+            Object.keys(APP_REGISTRY).forEach(id => {
+                if(id === 'sos') return;
+                const app = APP_REGISTRY[id];
+                const isInstalled = STORE.homeApps.includes(id);
+                
                 const item = document.createElement('div');
                 item.className = 'list-item';
                 item.style.padding = '15px';
+                item.style.fontSize = '20px';
+                
+                let iconHtml = '';
+                if(app.type === 'svg') iconHtml = `<svg viewBox="0 0 24 24" style="width:24px; fill:${app.color}"><path d="${app.path}"/></svg>`;
+                else iconHtml = `<span style="font-size:24px; margin-right:10px;">${app.content}</span>`;
+
                 item.innerHTML = `
-                    <div style="display:flex; align-items:center;">
-                        <div class="btn" style="width:40px; height:40px; background:${app.color}; margin-right:15px;">
-                            <svg viewBox="0 0 24 24" style="width:24px; fill:white;"><path d="${app.icon}"/></svg>
-                        </div>
-                        ${app.name}
+                    <div style="display:flex; align-items:center; flex:1;">
+                        ${iconHtml}
+                        <span>${app.name}</span>
                     </div>
-                    ${isActive ? '<span style="color:var(--danger)">移除</span>' : '<span style="color:var(--success)">添加</span>'}
+                    <span style="color:${isInstalled ? 'var(--c-red)' : 'var(--c-green)'}">${isInstalled ? '移除' : '添加'}</span>
                 `;
-                item.onclick = () => toggleApp(app.id);
+                
+                item.onclick = () => toggleApp(id);
                 list.appendChild(item);
             });
-
-            // 2. 显示第三方APP
-            APP_MARKET_DATA.forEach(app => {
-                const isActive = STORE.userApps.includes(app.id);
-                const item = document.createElement('div');
-                item.className = 'list-item';
-                item.style.padding = '15px';
-                item.innerHTML = `
-                    <div style="display:flex; align-items:center;">
-                        <div class="btn" style="width:40px; height:40px; background:${app.color}; margin-right:15px; font-size:20px;">
-                            ${app.appIcon}
-                        </div>
-                        ${app.name}
-                    </div>
-                    ${isActive ? '<span style="color:var(--danger)">移除</span>' : '<span style="color:var(--success)">添加</span>'}
-                `;
-                item.onclick = () => toggleApp(app.id, app);
-                list.appendChild(item);
-            });
-
             openModal('modal-market');
         }
 
-        function toggleApp(id, appData = null) {
-            if (STORE.userApps.includes(id)) {
-                // 移除
-                STORE.userApps = STORE.userApps.filter(i => i !== id);
-                showToast('已从主页移除');
+        function toggleApp(id) {
+            if (STORE.homeApps.includes(id)) {
+                STORE.homeApps = STORE.homeApps.filter(i => i !== id);
+                showToast('已移除');
             } else {
-                // 添加 (限制最多6个，SOS占1位)
-                if (STORE.userApps.length >= 5) {
-                    showToast('主页位置已满，请先移除其他功能');
+                if (STORE.homeApps.length >= 6) { // 限制6个按钮 + SOS
+                    showToast('主页位置已满');
                     return;
                 }
-                STORE.userApps.push(id);
+                STORE.homeApps.push(id);
                 showToast('已添加到主页');
             }
-            localStorage.setItem('ax_userHomeApps', JSON.stringify(STORE.userApps));
-            openAppMarket(); // 刷新列表状态
+            STORE.set('ax_homeApps', STORE.homeApps);
+            openAppMarket(); // 刷新列表
+            renderHome(); // 刷新主页
         }
 
-        // 模拟外部APP打开
-        function openExternalApp(name) {
-            const layer = document.getElementById('external-app-layer');
-            document.getElementById('ext-app-title').innerText = name;
-            const controls = document.getElementById('ext-app-controls');
-            controls.innerHTML = `
-                <button class="btn" style="background:#eee;" onclick="showToast('返回主页')">关闭</button>
-            `;
-            layer.style.display = 'flex';
+        // 通讯录操作
+        function openAddContact() { router.go('add-contact'); }
+        function saveContact() {
+            const n = document.getElementById('new-contact-name').value;
+            const p = document.getElementById('new-contact-phone').value;
+            if(!n || !p) return showToast('请填写完整');
+            STORE.contacts.push({id: Date.now().toString(), name: n, phone: p});
+            STORE.set('ax_contacts', STORE.contacts);
+            document.getElementById('new-contact-name').value = '';
+            document.getElementById('new-contact-phone').value = '';
+            showToast('保存成功');
+            router.go('contacts');
+        }
+        function deleteContact(id) {
+            if(confirm('确定删除?')) {
+                STORE.contacts = STORE.contacts.filter(c => c.id !== id);
+                STORE.set('ax_contacts', STORE.contacts);
+                renderContacts();
+            }
         }
 
-        function closeExternalApp() {
-            document.getElementById('external-app-layer').style.display = 'none';
+        // 设置操作
+        function toggleTheme() {
+            STORE.theme = STORE.theme === 'light' ? 'dark' : 'light';
+            STORE.set('ax_theme', STORE.theme);
+            document.body.setAttribute('data-theme', STORE.theme);
+            document.getElementById('theme-toggle').className = `toggle-switch ${STORE.theme === 'dark' ? 'on' : ''}`;
+        }
+        function toggleFontSize() {
+            let s = STORE.fontSize;
+            if (s === 1) s = 1.2; else if (s === 1.2) s = 1.4; else s = 1;
+            STORE.fontSize = s;
+            STORE.set('ax_fontSize', s);
+            document.documentElement.style.setProperty('--scale', s);
+            document.getElementById('font-indicator').innerText = s === 1 ? '标准' : (s===1.2?'大字':'特大');
+        }
+        function resetApp() {
+            if(confirm('确定重置所有设置和联系人数据吗？')) {
+                localStorage.clear();
+                location.reload();
+            }
         }
 
-        /**
-         * 5. 通用交互 {
-            const el = document.getElementById(id);
-            el.style.display = 'flex';
-        }
-
-        function closeModal(id) {
-            const el = document.getElementById(id);
-            el.style.display = 'none';
-        }
-
+        // 辅助函数
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
         function showToast(msg) {
             const t = document.getElementById('toast');
             t.innerText = msg;
             t.classList.add('show');
             setTimeout(() => t.classList.remove('show'), 3000);
         }
-
-        function vibrate(ms) {
-            if (navigator.vibrate) navigator.vibrate(ms);
-        }
-
-        function addLongPress(element, callback) {
+        function addLongPress(el, cb) {
             let timer;
-            const start = (e) => {
-                e.preventDefault();
-                timer = setTimeout(() => {
-                    vibrate(100);
-                    callback();
-                }, 800); // 长按 800ms 触发
-            };
-            const cancel = () => {
-                clearTimeout(timer);
-            };
-            element.addEventListener('mousedown', start);
-            element.addEventListener('touchstart', start);
-            element.addEventListener('mouseup', cancel);
-            element.addEventListener('mouseleave', cancel);
-            element.addEventListener('touchend', cancel);
+            const start = (e) => { e.preventDefault(); timer = setTimeout(cb, 800); };
+            const clear = () => { clearTimeout(timer); };
+            el.addEventListener('mousedown', start);
+            el.addEventListener('touchstart', start);
+            el.addEventListener('mouseup', clear);
+            el.addEventListener('touchend', clear);
         }
 
-        /**
-         * 6. 设置相关
-         */
-        function toggleTheme() {
-            const isDark = document.body.getAttribute('data-theme') === 'dark';
-            const toggle = document.getElementById('theme-toggle');
-            
-            if (isDark) {
-                document.body.removeAttribute('data-theme');
-                toggle.classList.remove('on');
-                STORE.settings.theme = 'light';
-            } else {
-                document.body.setAttribute('data-theme', 'dark');
-                toggle.classList.add('on');
-                STORE.settings.theme = 'dark';
-            }
-            localStorage.setItem('ax_settings', JSON.stringify(STORE.settings));
-        }
-
-        document.getElementById('view-settings').onclick = function(e) {
-            // 字体大小切换逻辑
-            if (e.target.parentElement.classList.contains('list-item') && e.target.id !== 'theme-toggle' && !e.target.closest('div[onclick]')) {
-                let scale = STORE.settings.fontSize;
-                if (scale === 1) scale = 1.2;
-                else if (scale === 1.2) scale = 1.4;
-                else scale = 1;
-                
-                STORE.settings.fontSize = scale;
-                localStorage.setItem('ax_settings', JSON.stringify(STORE.settings));
-                
-                const root = document.documentElement;
-                root.style.setProperty('--scale', scale);
-                
-                let text = '标准';
-                if (scale === 1.2) text = '大字';
-                if (scale === 1.4) text = '特大';
-                document.getElementById('font-indicator').innerText = text;
-            }
-        };
-
-        /**
-         * 7. 初始化
-         */
-        (function init() {
-            // 恢复主题
-            if (STORE.settings.theme === 'dark') {
-                document.body.setAttribute('data-theme', 'dark');
-                document.getElementById('theme-toggle').classList.add('on');
-            }
-            // 恢复字体
-            document.documentElement.style.setProperty('--scale', STORE.settings.fontSize);
-            let text = '标准';
-            if (STORE.settings.fontSize === 1.2) text = '大字';
-            if (STORE.settings.fontSize === 1.4) text = '特大';
-            document.getElementById('font-indicator').innerText = text;
-
+        // 初始化
+        (function init(){
+            document.documentElement.style.setProperty('--scale', STORE.fontSize);
+            document.body.setAttribute('data-theme', STORE.theme);
+            document.getElementById('theme-toggle').className = `toggle-switch ${STORE.theme === 'dark' ? 'on' : ''}`;
+            document.getElementById('font-indicator').innerText = STORE.fontSize === 1 ? '标准' : (STORE.fontSize===1.2?'大字':'特大');
             renderHome();
         })();
 
     </script>
+
+
 
 <script type="module">
   import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
@@ -807,5 +598,7 @@
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
   console.log("Supabase 已连接成功", supabase);
 </script>
+
+  
 </body>
 </html>
