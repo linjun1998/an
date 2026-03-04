@@ -40,6 +40,14 @@
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; margin: 0; padding: 0; }
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
+</script>
+
+        
         
         body {
             font-family: "PingFang SC", "WeChat Sans", sans-serif;
@@ -605,4 +613,5 @@
   
 </body>
 </html>
+
 
